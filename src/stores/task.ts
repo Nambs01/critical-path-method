@@ -1,16 +1,23 @@
-import { initialTasks } from '@/assets/constant/task';
+import { taskMap1, taskMap2, initialTasks } from '@/assets/constant/task';
 import type { Task } from '@/interface/Task';
+import { handlePosition } from '@/utils/handle-position';
 import { handleOrderTasks } from '@/utils/orderTask';
 import { MarkerType, type Edge, type Node } from '@vue-flow/core';
 import { defineStore } from 'pinia';
 
+const defaultData = [
+  initialTasks, taskMap1, taskMap2,
+]
+
 export const useTaskStore = defineStore('task', {
   state: () => ({
-    tasks: initialTasks as Map<string, Task>,
-    orderTasks: [] as string[],
+    isUpdated: true,
+    tasks: new Map(),
+    orderedTasks: [] as string[],
     totalDuration: 0,
     nodes: [] as Node[],
     edges: [] as Edge[],
+    tasksDegree: [] as string[][],
   }),
 
   actions: {
@@ -24,34 +31,37 @@ export const useTaskStore = defineStore('task', {
 
     removeTask(id: string) {
       this.tasks.delete(id);
-      this.tasks.forEach((task) => {
-        task.prevTasks = task.prevTasks.filter((t) => t != id);
-        task.nextTasks = task.nextTasks.filter((t) => t != id);
+      this.tasks.forEach((task: Task) => {
+        task.prevTasks = task.prevTasks.filter((t: string) => t != id);
+        task.nextTasks = task.nextTasks.filter((t: string) => t != id);
         if (!task.prevTasks.length) task.prevTasks.push('deb');
       });
     },
 
-    setOrderTasks() {
-      handleOrderTasks(this.tasks, this.orderTasks);
-      this.orderTasks.push('fin');
-      this.tasks.set('fin', {
-        duration: 0,
-        prevTasks: [],
-        earlyDate: 0,
-        lateDate: 0,
-        nextTasks: [],
-      });
-      this.tasks.forEach((task, key) => {
-        if ((!task.nextTasks.length && key != 'fin') || task.nextTasks.includes('fin'))
-          this.tasks.get('fin')?.prevTasks.push(key);
-      });
+    async setOrderedTasks() {
+        await handleOrderTasks(this.tasks).then((result) => {
+          this.orderedTasks = result.orderedTasks;
+          this.tasksDegree = result.tasksDegree;
+          this.orderedTasks.push('fin');
+          this.tasks.set('fin', {
+            duration: 0,
+            prevTasks: [],
+            earlyDate: 0,
+            lateDate: 0,
+            nextTasks: [],
+          });
+          this.tasks.forEach((task: Task, key: string) => {
+            if ((!task.nextTasks.length && key != 'fin') || task.nextTasks.includes('fin'))
+              this.tasks.get('fin')?.prevTasks.push(key);
+          });
+        }).catch((error) => { throw error; });
     },
 
-    setEarlyDate() {
+    async setEarlyDate() {
       let totalDuration = 0;
-      this.orderTasks.forEach((key) => {
+      this.orderedTasks.forEach((key: string) => {
         const _task = this.tasks.get(key);
-        _task?.prevTasks.forEach((keyTask) => {
+        _task?.prevTasks.forEach((keyTask: string) => {
           const _prevTask: Task = this.tasks.get(keyTask) as Task;
           if (_task.earlyDate <= _prevTask.earlyDate + _prevTask.duration) {
             _task.earlyDate = _prevTask.earlyDate + _prevTask.duration;
@@ -66,16 +76,16 @@ export const useTaskStore = defineStore('task', {
       this.totalDuration = totalDuration;
     },
 
-    setLateDate() {
-      this.orderTasks.reverse();
-      this.orderTasks.forEach((keyTask) => {
+    async setLateDate() {
+      this.orderedTasks.reverse();
+      this.orderedTasks.forEach((keyTask: string) => {
         if (keyTask != 'fin' && keyTask != 'deb') {
           const task = this.tasks.get(keyTask) as Task;
           if (!task.nextTasks.length) {
             const finTask = this.tasks.get('fin') as Task;
             task.lateDate = finTask.lateDate - task.duration;
           } else
-            task.nextTasks.forEach((key) => {
+            task.nextTasks.forEach((key: string) => {
               const nexTask = this.tasks.get(key) as Task;
               if (task.lateDate == 0 || task.lateDate >= nexTask.lateDate - task.duration) {
                 task.lateDate = nexTask.lateDate - task.duration;
@@ -83,203 +93,312 @@ export const useTaskStore = defineStore('task', {
             });
         }
       });
-      this.orderTasks.reverse();
+      this.orderedTasks.reverse();
     },
 
-    calculate() {
-      this.resetData();
-      this.setOrderTasks();
-      this.setEarlyDate();
-      this.setLateDate();
-      this.setNodes_edges();
+    async calculate() {
+      try {
+        this.resetData();
+    
+        await this.setOrderedTasks();
+        await this.setEarlyDate();
+        await this.setLateDate();
+        await this.setNodes_edges();
+      } catch (error) {
+        throw error;
+      }
     },
 
-    setNodes_edges() {
+    async setNodes_edges() {
       const nodesData: {
         capacity: number;
+        isCriticalPath: boolean;
         ids: string[];
         prev: string[];
         next: string[];
       }[] = [];
+      const taskPrime: string[] = [];
 
-      this.nodes.push({
-        id: 'deb',
-        label: 'Deb',
-        position: { x: 20, y: 400 },
-        type: 'startNode',
-      });
-      let idNode = 0;
-      const startTasks = this.tasks.get('deb')?.nextTasks;
-
-      const ySpacing = 100; // Espacement vertical ajusté
-      const levels: { [key: number]: number } = {}; // Stocker les niveaux verticaux
-
-      this.orderTasks.forEach((id) => {
-        if (id != 'deb' && !startTasks?.includes(id)) {
+      this.orderedTasks.forEach((id, index) => {
+        if (id != "deb") {
           const _task = this.tasks.get(id) as Task;
-
           const _nodeIndex = nodesData.findIndex(
-            (value) =>
-              value.capacity == _task.earlyDate &&
-              (value.prev.join(',') == _task.prevTasks.join(',') ||
-                (_task.nextTasks.length > 0 && value.next.join(',') == _task.nextTasks.join(','))),
+            (value) => value.prev.join(',') == _task.prevTasks.join(',')
           );
-
+          
           if (_nodeIndex >= 0) {
-            this.nodes[_nodeIndex + 1].data.lateStart.push({ id, value: _task.lateDate });
-            nodesData[_nodeIndex].ids.push(id);
-          } else {
-            // Assurer une bonne répartition verticale
-            if (!(_task.nextTasks.length in levels)) {
-              levels[_task.nextTasks.length] = 400;
+            if (!this.nodes[_nodeIndex].data.lateStart.some((data: { id: string; }) => data.id === id)) {
+              this.nodes[_nodeIndex].data.lateStart.push({ id, value: _task.lateDate });
+              nodesData[_nodeIndex].ids.push(id);
+              if (_task.earlyDate === _task.lateDate) nodesData[_nodeIndex].isCriticalPath = true;
             }
-
-            // Définir la position
-            const nodeX = _task.earlyDate * 15; // Augmenter l'espacement horizontal
-            const nodeY = levels[_task.nextTasks.length]; // Utiliser le niveau vertical calculé
-
+          } 
+          
+          else {
+            const isCriticalPath = _task.earlyDate === _task.lateDate;
             nodesData.push({
               capacity: _task.earlyDate,
+              isCriticalPath,
               ids: [id],
               prev: _task.prevTasks,
               next: _task.nextTasks.filter((next) => next != 'fin'),
             });
-
+  
+            const nodeKey = _task.prevTasks.join(",");
             this.nodes.push({
-              id: idNode.toString(),
-              position: { x: nodeX, y: nodeY },
+              id: nodeKey, 
+              position: { x: 400, y: 400 },
               data: {
+                edgesTarget: [],
+                edgesSource: [],
                 earlyStart: _task.earlyDate,
                 lateStart: [{ id, value: _task.lateDate }],
               },
               type: id == 'fin' ? 'endNode' : 'stepNode', // Type personnalisé
             });
-            idNode++;
+          }
+
+          if(_task.nextTasks.length > 1) {
+              _task.nextTasks.forEach((next) => {
+                this.tasks.forEach((task, key) => {
+                  if(key != id && task.nextTasks.includes(next) && task.nextTasks.join(",") != _task.nextTasks.join(",")) {
+                    if(!taskPrime.includes(id)) {
+                      taskPrime.push(id);
+                      
+                      const lateStartData: { id: string; value: number; }[] = [];
+                      _task.nextTasks.map((nextTask) => {
+                        const _nextTask = this.tasks.get(nextTask) as Task;
+                        lateStartData.push({ id: nextTask, value: _nextTask.lateDate });
+                      });
+
+                      const isCriticalPath = lateStartData.some((data) => data.value === _task.earlyDate + _task.duration);
+                      nodesData.push({
+                        capacity: _task.earlyDate + _task.duration,
+                        isCriticalPath,
+                        ids: [id + "'"],
+                        next: _task.nextTasks,
+                        prev: [id],
+                      });
+
+                      this.nodes.push({
+                        id: id + "'",
+                        position: { x: 400, y:400, },
+                        data: {
+                          edgesTarget: [],
+                          edgesSource: [],
+                          earlyStart: _task.earlyDate + _task.duration,
+                          lateStart: lateStartData,
+                        },
+                        type: 'stepNode', // Type personnalisé
+                      });
+                    }
+                  }
+                })
+              })
           }
         }
-      });
-      const taskPrime: string[] = [];
-      const tasksWithMultiNext = Array.from(
-        new Map([...this.tasks].filter(([key, task]) => key != 'fin' && task.prevTasks.length > 1)),
-        ([id, task]) => ({
-          id,
-          prevs: task.prevTasks,
-        }),
-      );
-      tasksWithMultiNext.forEach((value) => {
-        for (const prev of value.prevs) {
-          if (!taskPrime.includes(prev)) {
-            for (const [key, task] of this.tasks) {
-              if (key !== value.id && task.prevTasks.includes(prev)) {
-                const _task = this.tasks.get(prev) as Task;
-                nodesData.push({
-                  capacity: _task.earlyDate + _task.duration,
-                  ids: [prev + "'"],
-                  next: _task.nextTasks,
-                  prev: [],
-                });
+      })
 
-                // Assurer une bonne répartition verticale
-                if (!(_task.earlyDate in levels)) {
-                  levels[_task.earlyDate] = 400;
-                } else {
-                  levels[_task.earlyDate] += ySpacing;
+      this.orderedTasks.forEach((id: string) => {
+
+          // Ajouter une arête pour chaque tâche précédente
+          if (id !== 'deb') {
+            if (taskPrime.includes(id)) {
+              const edgeTask = this.tasks.get(id) as Task;
+              const source = edgeTask.prevTasks.length > 0 ? edgeTask.prevTasks.join(',') : 'deb';
+              
+              this.addCustomEdge({
+                id,
+                source: source,
+                target: `${id}'`,
+                label: `${edgeTask.name} (${edgeTask.duration})`,
+                isCriticalPath: edgeTask.earlyDate === edgeTask.lateDate,
+              });
+
+              edgeTask.nextTasks.forEach((next) => {
+                const nodePrime = nodesData.find((value) => value.ids.includes(`${id}'`));
+                if(nodePrime && taskPrime.includes(next)) {
+                  const nextTask = this.tasks.get(next) as Task;
+                  const targetNode = nodesData.find((value) => value.ids.includes(`${next}'`));
+                  if(nextTask.prevTasks.length == 1 && targetNode) {
+                    this.addCustomEdge({
+                      id: '',
+                      source: `${id}'`,
+                      target: `${next}'`,
+                      label: `${nextTask.name} (${nextTask.duration})`,
+                      isCriticalPath: nodePrime.isCriticalPath && targetNode.isCriticalPath,
+                    });
+                  }
+                  if(nextTask.prevTasks.length > 1) {
+                    const targetNode = nodesData.find((value) => value.prev.includes(next));
+                    if (targetNode) {
+                      this.addCustomEdge({
+                        id: '',
+                        source: `${id}'`,
+                        target: nextTask.prevTasks.join(','),
+                        label: '0',
+                        isCriticalPath: nodePrime.isCriticalPath && targetNode.isCriticalPath,
+                      });
+                    }
+                  }
+                } 
+
+                else {
+                  const targetNode = nodesData.find((value) => value.ids.includes(next));
+                  if (targetNode && nodePrime) {
+                    this.addCustomEdge({
+                      id: '',
+                      source: `${id}'`,
+                      target: targetNode.prev.join(','),
+                      label: '0',
+                      isCriticalPath: nodePrime.isCriticalPath && targetNode.isCriticalPath,
+                    });
+                  }
                 }
+              })
+            }
 
-                this.nodes.push({
-                  id: prev + "'",
-                  position: { x: _task.earlyDate * 15, y: levels[_task.earlyDate] }, // label: `${id}    plus tot: ${_task.earlyDate} plus tard: ${_task.lateDate}`,
-                  data: {
-                    earlyStart: _task.earlyDate + _task.duration,
-                    lateStart: [{ id: prev + "'", value: _task.lateDate + _task.duration }],
-                  },
-                  type: 'stepNode', // Type personnalisé
-                });
-                taskPrime.push(prev);
-                break;
-              }
+            else {
+              const edgeTask = this.tasks.get(id) as Task;              
+              const source = edgeTask.prevTasks.length > 0 ? edgeTask.prevTasks.join(',') : 'deb';
+              const target = nodesData.find((value) => value.prev.includes(id))?.prev.join(',') || 'fin';
+              this.addCustomEdge({
+                id,
+                source,
+                target,
+                label: `${edgeTask.name} (${edgeTask.duration})`,
+                isCriticalPath: edgeTask.earlyDate === edgeTask.lateDate,
+              });
             }
           }
-        }
-      });
+      })
 
-      // Création des arêtes (edges)
-      [...this.tasks].forEach(([id, _task]) => {
-        if (id !== 'deb' && id !== 'fin') {
-          const source = startTasks?.includes(id)
-            ? 'deb'
-            : nodesData.findIndex((value) => value.ids.includes(id));
-          const target = taskPrime.includes(id)
-            ? id + "'"
-            : nodesData.findIndex((value) => value.prev.includes(id));
-          const color = _task.earlyDate === _task.lateDate ? '#dc2626' : '#262626';
-
-          this.edges.push({
-            id: source + '-' + target,
-            source: source.toString(),
-            target: target.toString(),
-            label: `${_task?.name}  (${_task.duration})`, // Affichage du nom et durée sur l'edge
-            style: {
-              strokeWidth: 1.5,
-              stroke: color,
-            },
-            labelStyle: {
-              fill: color,
-              fontSize: '14px',
-            },
-
-            markerEnd: {
-              type: MarkerType.Arrow,
-              color,
-              strokeWidth: 2,
-            },
-          });
-          if (taskPrime.includes(id)) {
-            nodesData.some((value) => {
-              if (value.ids.includes(id + "'")) {
-                value.next.forEach((next) => {
-                  const _target = nodesData.findIndex((value) => value.ids.includes(next));
-                  const taskNext = this.tasks.get(next) as Task;
-                  const _color =
-                    taskNext.earlyDate === taskNext.lateDate && _task.earlyDate === _task.lateDate
-                      ? '#dc2626'
-                      : '#262626';
-                  this.edges.push({
-                    id: id + "'" + '-' + next,
-                    source: id + "'",
-                    target: _target.toString(),
-                    label: '0',
-                    style: {
-                      strokeWidth: 1.5,
-                      stroke: _color,
-                    },
-                    labelStyle: {
-                      fill: _color,
-                      fontSize: '14px',
-                    },
-                    markerEnd: {
-                      type: MarkerType.Arrow,
-                      color: _color,
-                      strokeWidth: 2,
-                    },
-                  });
-                });
-              }
-            });
+      this.edges.forEach((edge) => {
+        const sourceNode = this.nodes.find((node) => node.id === edge.source);
+        const targetNode = this.nodes.find((node) => node.id === edge.target);
+        
+        if (sourceNode && targetNode) {
+          const indexSource = sourceNode.data.edgesSource.findIndex((handle: string) => handle === edge.id);
+          const indexTarget = targetNode.data.edgesTarget.findIndex((handle: string) => handle === edge.id);
+          if (indexTarget > -1  ) {
+            edge.sourceHandle = handlePosition(indexSource, sourceNode.data.edgesSource.length);
+            edge.targetHandle = handlePosition(indexTarget, targetNode.data.edgesTarget.length);
           }
         }
       });
+      
+      // 1. Créer un dictionnaire de niveaux pour les tâches
+      const taskLevelMap: Record<string, number> = {};
+      this.tasksDegree.forEach((tasks, level) => {
+        tasks.forEach(task => taskLevelMap[task] = level);
+      });
+
+      // 2. Calculer les positions
+      const COLUMN_SPACING = 250;
+      const ROW_SPACING = 120;
+      const BASE_Y = 100;
+
+      // 3. Organiser les nœuds par niveau
+      const nodesByLevel: Record<number, Node[]> = {};
+
+      this.nodes.forEach(node => {
+        let level = 0;
+        
+        if (node.id === 'deb') {
+          level = 0;
+        } else if (node.id === 'fin') {
+          level = Math.max(...Object.values(taskLevelMap)) + 1;
+        } else if (node.id.endsWith("'")) {
+          // Nœud prime (fin de tâche)
+          const baseTask = node.id.slice(0, -1);
+          level = taskLevelMap[baseTask] + 1;
+        } else {
+          // Nœud standard
+          const taskId = node.id.split(',')[0]; // Prendre la première tâche pour le niveau
+          level = taskLevelMap[taskId] || 0;
+        }
+
+        if (!nodesByLevel[level]) nodesByLevel[level] = [];
+        nodesByLevel[level].push(node);
+      });
+
+      // 4. Placer les nœuds
+      Object.entries(nodesByLevel).forEach(([level, nodes]) => {
+        const x = parseInt(level) * COLUMN_SPACING;
+        
+        nodes.forEach((node, index) => {
+          node.position = {
+            x,
+            y: BASE_Y + index * ROW_SPACING
+          };
+        });
+      });
+
+      // 5. Placement spécial pour 'fin' (dernière colonne)
+      const finNode = this.nodes.find(n => n.id === 'fin');
+      if (finNode) {
+        const maxLevel = Math.max(...Object.keys(nodesByLevel).map(Number));
+        finNode.position = {
+          x: (maxLevel + 1) * COLUMN_SPACING,
+          y: BASE_Y
+        };
+      }
+
+    },
+
+    addCustomEdge(param: {id: string,  source: string, target: string, label: string, isCriticalPath: boolean, targethandle?: string}) {
+      const nodeSourceIndex = this.nodes.findIndex((node) => node.id === param.source);
+      const nodeTargetIndex = this.nodes.findIndex((node) => node.id === param.target);
+      
+      if (nodeSourceIndex > -1 && nodeTargetIndex > -1) {
+        const color = param.isCriticalPath ? '#dc2626' : '#262626';
+        const id= param.source + '-' + param.target + '->' + param.id;
+
+        this.nodes[nodeSourceIndex].data.edgesSource.push(id);
+        this.nodes[nodeTargetIndex].data.edgesTarget.push(id);
+        
+        this.edges.push({
+          ...param,
+          id,
+          targetHandle: id,
+          sourceHandle: id,
+          animated: param.label === '0',
+          style: {
+            strokeWidth: 1.5,
+            stroke: color,
+          },
+          labelStyle: {
+            fill: color,
+            fontSize: '14px',
+          },
+          markerEnd: {
+            type: MarkerType.Arrow,
+            color,
+            strokeWidth: 2,
+          },
+        });
+      }
     },
 
     resetData() {
       this.nodes = [];
       this.edges = [];
-      this.orderTasks = [];
-      this.tasks.forEach((task) => {
+      this.orderedTasks = [];
+      this.totalDuration = 0;
+      this.tasks.forEach((task: Task) => {
+        task.nextTasks = [];
         task.earlyDate = 0;
         task.lateDate = 0;
       });
     },
+
+    setDefaultData(index: number | null) {
+      if(index === null) {
+        this.tasks = new Map();
+        this.resetData();
+      }
+      else this.tasks = defaultData[index];
+    }
   },
   getters: {
     getPrevTasksName(state) {
@@ -289,7 +408,7 @@ export const useTaskStore = defineStore('task', {
         if (_task.prevTasks.length < 1 || _task.prevTasks.includes('deb')) {
           return 'Début';
         }
-        state.tasks.get(id)?.prevTasks.forEach((key) => {
+        state.tasks.get(id)?.prevTasks.forEach((key: string) => {
           _prevTasksName.push(state.tasks.get(key)?.name as string);
         });
         return _prevTasksName.join(', ');
