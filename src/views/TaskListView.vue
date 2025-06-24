@@ -7,7 +7,7 @@
       <Button label="Nouvelle Tâche" severity="success" @click="openModal(false)" />
     </div>
     <div class="content">
-      <template v-for="[id, task] in Array.from(tasks)">
+      <template :key="id" v-for="[id, task] in Array.from(taskStore.tasks)">
         <ItemTask
           v-if="id != 'deb' && id != 'fin'"
           :id="id"
@@ -18,12 +18,13 @@
         />
       </template>
     </div>
+    <div v-if="!taskStore.tasks.size" class="task_not_found">Aucune tâche chargée</div>
   </div>
   <ModalTask :visible="isActiveModal" :close="closeModal" :dataUpdated="dataUpdated" />
   <RemoveModalTask
-    :visible="showRemoveModal"
-    :taskDeleted="taskDeleted"
-    :close="closeRemoveModal"
+  :visible="showRemoveModal"
+  :taskDeleted="taskDeleted"
+  :close="closeRemoveModal"
   />
 </template>
 
@@ -43,7 +44,7 @@ const taskDeleted = reactive({
   id: '',
   name: '',
 });
-const { tasks } = useTaskStore() as { tasks: Map<string, Task> };
+const taskStore = useTaskStore();
 const dataUpdated = reactive({
   isUpdate: false,
   id: '',
@@ -74,6 +75,10 @@ function openRemoveModal(id: string, name: string) {
 
 <style lang="scss" scoped>
 .task-list {
+  .task_not_found {
+    margin-top: 100px;
+    text-align: center;
+  }
   padding: 0 10px 5px;
   // border-right: 1px solid gray;
   // background-color: gray;

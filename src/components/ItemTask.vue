@@ -2,8 +2,8 @@
   <div class="task-item">
     <p class="title">{{ task.name }}</p>
     <p>
-      Durée: <span>{{ task.duration }} j</span> <br />Tâche antécédente:
-      <span> {{ useTaskStore().getPrevTasksName(id) }}</span>
+      Durée: <span>{{ task.duration }} j</span> <br />
+      Antécédent(s): <span> {{ taskStore.getPrevTasksName(id) }}</span>
     </p>
     <div class="btn-group">
       <Button
@@ -31,6 +31,8 @@
 import type { Task } from '@/interface/Task';
 import { useTaskStore } from '@/stores/task';
 import { Button } from 'primevue';
+
+const taskStore = useTaskStore();
 
 const { id, task } = defineProps(['id', 'task']) as {
   id: string;
