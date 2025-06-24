@@ -77,18 +77,10 @@ onMounted(() => {
 });
 
 watch(
-  () => props.dataUpdated.task.name,
+  () => props.visible,
   () => {
-    data.name = props.dataUpdated.task.name;
-    data.duration = props.dataUpdated.task.duration;
-    data.prevTasks = props.dataUpdated.task.prevTasks;
-  },
-);
-watch(
-  () => props.dataUpdated.isUpdate,
-  () => {
-    if (!props.dataUpdated.isUpdate) clear();
-    else {
+    clear();
+    if (props.dataUpdated.isUpdate){
       data.name = props.dataUpdated.task.name;
       data.duration = props.dataUpdated.task.duration;
       data.prevTasks = props.dataUpdated.task.prevTasks;
@@ -125,7 +117,10 @@ function clear() {
 
 function checkError() {
   if (data.name == '') errorMessage.name = 'Entrer le nom de la tâche svp !';
-  if (Array.from(tasks.value.keys()).includes(data.name))
+  if (
+    (props.dataUpdated.isUpdate && [...tasks.value.keys()].filter(id => id != props.dataUpdated.id).includes(data.name)) ||
+    [...tasks.value.keys()].includes(data.name)
+  )
     errorMessage.name = "Changer le nom de la tâche , s'il vous plaît !";
   if (!data.duration || data.duration < 1)
     errorMessage.duration = "Entrer la durée de la tâche , s'il vous plaît !";
@@ -161,7 +156,7 @@ function submit() {
 
 function cancel() {
   props.close();
-  if (!props.dataUpdated.isUpdate) clear();
+  clear();
 }
 </script>
 
