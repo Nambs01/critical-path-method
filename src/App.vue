@@ -1,28 +1,67 @@
 <script setup lang="ts">
-import { Button } from 'primevue';
+import { Button, Select } from 'primevue';
 import TaskListView from './views/TaskListView.vue';
 import TaskGraphView from './views/TaskGraphView.vue';
 import { useTaskStore } from './stores/task';
 import { ref, type Ref } from 'vue';
 import type { Edge, Node } from '@vue-flow/core';
+import ErrorModal from './components/ErrorModal.vue';
 
+const taskStore = useTaskStore();
+const showErrorModal = ref(false);
+const errorMessage = ref('');
 const edges: Ref<Edge[] | undefined> = ref();
 const nodes: Ref<Node[] | undefined> = ref();
-function generate() {
-  useTaskStore().calculate();
-  edges.value = useTaskStore().edges;
-  nodes.value = useTaskStore().nodes;
+const totalDuration = ref(0);
+
+async function generate() {
+  try {
+    await taskStore.calculate();
+    edges.value = useTaskStore().edges;
+    nodes.value = useTaskStore().nodes;
+    totalDuration.value = useTaskStore().totalDuration;
+  } catch (error) {
+    errorMessage.value = error as string;
+    showErrorModal.value = true;
+  }
 }
+function closeErrorModal() {
+  showErrorModal.value = false;
+}
+
+const defaultData = [
+  { name: 'Support du cours', id: 0 },
+  { name: 'TD 1', id: 1 },
+  { name: 'TD 2', id: 2 },
+];
+
+const selected: Ref<number | null> = ref(null);
+
+const handleChangeDefaultData = () => {
+  taskStore.setDefaultData(selected.value);
+};
 </script>
 
 <template>
   <header>
     <h1>Critical Path Method - CPM</h1>
-    <Button label="Génerer" severity="success" @click="generate()" />
+    <Select
+      checkmark
+      showClear
+      v-model="selected"
+      :options="defaultData"
+      optionLabel="name"
+      optionValue="id"
+      placeholder="Données par défaut"
+      class="w-full"
+      @change="handleChangeDefaultData()"
+    />
+    <Button :disabled="taskStore.tasks.size === 0" label="Génerer" severity="success" @click="generate()" />
   </header>
   <main>
     <TaskListView />
-    <TaskGraphView :nodes="nodes" :edges="edges" />
+    <TaskGraphView :nodes="nodes" :edges="edges" :totalDuration="totalDuration" />
+    <ErrorModal :visible="showErrorModal" :close="closeErrorModal" :errorMessage="errorMessage"/>
   </main>
 </template>
 
