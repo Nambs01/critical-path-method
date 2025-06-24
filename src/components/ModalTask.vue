@@ -80,7 +80,7 @@ watch(
   () => props.visible,
   () => {
     clear();
-    if (props.dataUpdated.isUpdate){
+    if (props.dataUpdated.isUpdate) {
       data.name = props.dataUpdated.task.name;
       data.duration = props.dataUpdated.task.duration;
       data.prevTasks = props.dataUpdated.task.prevTasks;
@@ -118,7 +118,8 @@ function clear() {
 function checkError() {
   if (data.name == '') errorMessage.name = 'Entrer le nom de la tâche svp !';
   if (
-    (props.dataUpdated.isUpdate && [...tasks.value.keys()].filter(id => id != props.dataUpdated.id).includes(data.name)) ||
+    (props.dataUpdated.isUpdate &&
+      [...tasks.value.keys()].filter((id) => id != props.dataUpdated.id).includes(data.name)) ||
     [...tasks.value.keys()].includes(data.name)
   )
     errorMessage.name = "Changer le nom de la tâche , s'il vous plaît !";

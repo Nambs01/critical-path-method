@@ -22,9 +22,9 @@
   </div>
   <ModalTask :visible="isActiveModal" :close="closeModal" :dataUpdated="dataUpdated" />
   <RemoveModalTask
-  :visible="showRemoveModal"
-  :taskDeleted="taskDeleted"
-  :close="closeRemoveModal"
+    :visible="showRemoveModal"
+    :taskDeleted="taskDeleted"
+    :close="closeRemoveModal"
   />
 </template>
 

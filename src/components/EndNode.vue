@@ -11,7 +11,8 @@
     :id="handlePosition(index, data.edgesTarget.length)"
     :position="Position.Left"
     :connectable="false"
-    /></template>
+  />
+</template>
 
 <script setup lang="ts">
 import { Handle, Position } from '@vue-flow/core';
@@ -19,7 +20,7 @@ import { handlePosition } from '@/utils/handle-position';
 
 const { data } = defineProps(['data']) as {
   data: {
-    edgesTarget: string[],
+    edgesTarget: string[];
     earlyStart: number;
   };
 };

@@ -10,7 +10,6 @@
   </Dialog>
 </template>
 
-
 <script setup lang="ts">
 import { Dialog, Button } from 'primevue';
 
@@ -19,7 +18,6 @@ const props = defineProps<{
   close: () => void;
   errorMessage: string;
 }>();
-
 </script>
 
 <style lang="scss" scoped>

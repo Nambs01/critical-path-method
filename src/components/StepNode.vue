@@ -1,36 +1,36 @@
 <template>
-  <div :class="{
-    'vue-flow__node-custom': true,
-    'critical_path': isCriticalPath,
-  }">
-  <div v-if="data.earlyStart === 0"
+  <div
     :class="{
-      'deb': true,
-      'top': data.lateStart.length > 1,
+      'vue-flow__node-custom': true,
+      critical_path: isCriticalPath,
     }"
   >
-    Deb
-  </div>
-  <div 
-    class="content"
-    v-if="data.earlyStart !== 0 || data.lateStart.length > 1"
-  >
-    <template v-if="data.earlyStart != 0 || data.lateStart.length > 1">
-      <div class="left">{{ data.earlyStart }}</div>
-      <div class="ligne"></div>
-      <div class="right">
-        <template v-for="(lateStart, index) in data.lateStart" :key="index">
-          <div
-            :class="{
-              item: true,
-              'border-none': index == data.lateStart.length - 1,
-            }"
-          >
-            {{ lateStart.value }}
-          </div>
-        </template>
-      </div>
-    </template>
+    <div
+      v-if="data.earlyStart === 0"
+      :class="{
+        deb: true,
+        top: data.lateStart.length > 1,
+      }"
+    >
+      Deb
+    </div>
+    <div class="content" v-if="data.earlyStart !== 0 || data.lateStart.length > 1">
+      <template v-if="data.earlyStart != 0 || data.lateStart.length > 1">
+        <div class="left">{{ data.earlyStart }}</div>
+        <div class="ligne"></div>
+        <div class="right">
+          <template v-for="(lateStart, index) in data.lateStart" :key="index">
+            <div
+              :class="{
+                item: true,
+                'border-none': index == data.lateStart.length - 1,
+              }"
+            >
+              {{ lateStart.value }}
+            </div>
+          </template>
+        </div>
+      </template>
     </div>
   </div>
 
@@ -41,7 +41,7 @@
     :id="handlePosition(index, data.edgesSource.length)"
     :position="Position.Right"
     :connectable="false"
-    />
+  />
 
   <Handle
     v-for="(idEdge, index) in data.edgesTarget"
@@ -50,7 +50,7 @@
     :id="handlePosition(index, data.edgesTarget.length)"
     :position="Position.Left"
     :connectable="false"
-    />
+  />
 </template>
 <script setup lang="ts">
 import { computed } from 'vue';
@@ -59,8 +59,8 @@ import { handlePosition } from '@/utils/handle-position';
 
 const { data } = defineProps(['data']) as {
   data: {
-    edgesSource: string[],
-    edgesTarget: string[],
+    edgesSource: string[];
+    edgesTarget: string[];
     earlyStart: number;
     lateStart: { id: string; value: number }[];
   };
@@ -72,7 +72,6 @@ const isCriticalPath = computed(() => {
   }
   return false;
 });
-
 </script>
 <style lang="scss" scoped>
 @use '@/assets/scss/vue-flow-handle.scss';

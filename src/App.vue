@@ -56,12 +56,17 @@ const handleChangeDefaultData = () => {
       class="w-full"
       @change="handleChangeDefaultData()"
     />
-    <Button :disabled="taskStore.tasks.size === 0" label="Génerer" severity="success" @click="generate()" />
+    <Button
+      :disabled="taskStore.tasks.size === 0"
+      label="Génerer"
+      severity="success"
+      @click="generate()"
+    />
   </header>
   <main>
     <TaskListView />
     <TaskGraphView :nodes="nodes" :edges="edges" :totalDuration="totalDuration" />
-    <ErrorModal :visible="showErrorModal" :close="closeErrorModal" :errorMessage="errorMessage"/>
+    <ErrorModal :visible="showErrorModal" :close="closeErrorModal" :errorMessage="errorMessage" />
   </main>
 </template>
 

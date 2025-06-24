@@ -7,11 +7,11 @@ export const handlePosition = (index: number, length: number) => {
     if (index === mid) {
       return 'position-50';
     } else {
-      const result = index < mid ? 10  + q * index : 90 - q * (length - index - 1);
+      const result = index < mid ? 10 + q * index : 90 - q * (length - index - 1);
       return 'position-' + Math.floor(result);
     }
   } else {
     const result = index < mid ? 15 + q * index : 85 - q * (length - index - 1);
     return 'position-' + Math.floor(result);
   }
-}
+};
