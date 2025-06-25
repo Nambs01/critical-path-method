@@ -72,18 +72,17 @@ const props = defineProps<{
   };
 }>();
 const tasks: Ref = ref();
-onMounted(() => {
-  tasks.value = useTaskStore().tasks;
-});
 
 watch(
   () => props.visible,
   () => {
     clear();
+    tasks.value = useTaskStore().tasks;
     if (props.dataUpdated.isUpdate) {
       data.name = props.dataUpdated.task.name;
       data.duration = props.dataUpdated.task.duration;
       data.prevTasks = props.dataUpdated.task.prevTasks;
+      console.log(data.prevTasks);
     }
   },
 );
