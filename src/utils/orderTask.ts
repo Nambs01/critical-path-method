@@ -61,7 +61,7 @@ export const handleOrderTasks = (
       });
       zeroDegreTask = nextTasks;
     }
-    console.log(tasksDegree);
+
     if (orderedTasks.length !== tasks.size) {
       reject("Impossible d'ordonner les tâches : dépendances circulaires détectées.");
     } else resolve({ orderedTasks, tasksDegree });
