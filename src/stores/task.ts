@@ -302,9 +302,9 @@ export const useTaskStore = defineStore('task', {
       });
 
       // 2. Calculer les positions
-      const COLUMN_SPACING = 250;
-      const ROW_SPACING = 120;
-      const BASE_Y = 100;
+      const COLUMN_SPACING = 200;
+      const ROW_SPACING = 175;
+      const BASE_Y = 250;
 
       // 3. Organiser les nœuds par niveau
       const nodesByLevel: Record<number, Node[]> = {};
