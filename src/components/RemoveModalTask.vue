@@ -2,7 +2,7 @@
   <Dialog v-model:visible="props.visible" :closable="false" modal :style="{ width: '25rem' }">
     <div class="content">
       <p>
-        Êtes-vous sûr de vouloir supprimer la tâche "{{ props.taskDeleted.name }}" ? Cette action
+        Êtes-vous sûr de vouloir supprimer la tâche "{{ props.taskDeleted.id }}" ? Cette action
         est irréversible.
       </p>
       <div class="btn-groupe">
@@ -22,7 +22,6 @@ const props = defineProps<{
   close: () => void;
   taskDeleted: {
     id: string;
-    name: string;
   };
 }>();
 

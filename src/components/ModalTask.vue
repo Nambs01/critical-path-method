@@ -14,6 +14,7 @@
         autocomplete="off"
         @input="errorMessage.name = ''"
         :invalid="errorMessage.name.length > 0"
+        :readonly="props.dataUpdated.isUpdate"
       />
       <Message v-if="errorMessage.name.length" severity="error" size="small" variant="simple">
         {{ errorMessage.name }}
@@ -38,9 +39,10 @@
       <MultiSelect
         v-model="data.prevTasks"
         :options="optionTasks"
-        option-label="task.name"
+        option-label="id"
         option-value="id"
         filter
+        @change="handleChangePrevTasks($event.value)"
         class="w-full prev-task"
       />
     </div>
@@ -60,7 +62,7 @@
 import type { Task } from '@/interface/Task';
 import { useTaskStore } from '@/stores/task';
 import { Dialog, InputText, InputNumber, Button, Message, MultiSelect } from 'primevue';
-import { computed, onMounted, reactive, ref, watch, type Ref } from 'vue';
+import { computed, reactive, ref, watch, type Ref } from 'vue';
 
 const props = defineProps<{
   visible: boolean;
@@ -79,15 +81,14 @@ watch(
     clear();
     tasks.value = useTaskStore().tasks;
     if (props.dataUpdated.isUpdate) {
-      data.name = props.dataUpdated.task.name;
+      data.name = props.dataUpdated.id;
       data.duration = props.dataUpdated.task.duration;
       data.prevTasks = props.dataUpdated.task.prevTasks;
-      console.log(data.prevTasks);
     }
   },
 );
 const data = reactive({
-  name: props.dataUpdated.task.name,
+  name: props.dataUpdated.id,
   duration: props.dataUpdated.task.duration,
   prevTasks: props.dataUpdated.task.prevTasks,
 });
@@ -97,7 +98,7 @@ const errorMessage = reactive({
 });
 const optionTasks = computed(() => {
   return Array.from(
-    new Map([...tasks.value].filter(([key]) => key != 'deb' && key != 'fin')),
+    new Map([...tasks.value].filter(([key]) => key != 'deb' && key != 'fin' && key != data.name)),
     ([id, task]) => ({
       id,
       task,
@@ -137,6 +138,10 @@ function addTaskSubmit() {
     } as unknown as Task,
   );
   clear();
+}
+
+function handleChangePrevTasks(value: string[]) {
+  data.prevTasks = value.filter((id) => id != 'deb');
 }
 
 function updateTaskSubmit() {

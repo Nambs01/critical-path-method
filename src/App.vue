@@ -10,16 +10,10 @@ import ErrorModal from './components/ErrorModal.vue';
 const taskStore = useTaskStore();
 const showErrorModal = ref(false);
 const errorMessage = ref('');
-const edges: Ref<Edge[] | undefined> = ref();
-const nodes: Ref<Node[] | undefined> = ref();
-const totalDuration = ref(0);
 
 async function generate() {
   try {
     await taskStore.calculate();
-    edges.value = useTaskStore().edges;
-    nodes.value = useTaskStore().nodes;
-    totalDuration.value = useTaskStore().totalDuration;
   } catch (error) {
     errorMessage.value = error as string;
     showErrorModal.value = true;
@@ -57,7 +51,7 @@ const handleChangeDefaultData = () => {
       @change="handleChangeDefaultData()"
     />
     <Button
-      :disabled="taskStore.tasks.size === 0"
+      :disabled="taskStore.tasks.size < 2 || taskStore.totalDuration !== 0"
       label="Génerer"
       severity="success"
       @click="generate()"
@@ -65,7 +59,7 @@ const handleChangeDefaultData = () => {
   </header>
   <main>
     <TaskListView />
-    <TaskGraphView :nodes="nodes" :edges="edges" :totalDuration="totalDuration" />
+    <TaskGraphView :nodes="taskStore.nodes" :edges="taskStore.edges" :totalDuration="taskStore.totalDuration" />
     <ErrorModal :visible="showErrorModal" :close="closeErrorModal" :errorMessage="errorMessage" />
   </main>
 </template>

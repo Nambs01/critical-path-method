@@ -1,9 +1,10 @@
 <template>
   <div class="task-item">
-    <p class="title">{{ task.name }}</p>
+    <p class="title">{{ id }}</p>
     <p>
       Durée: <span>{{ task.duration }} j</span> <br />
-      Antécédent(s): <span> {{ taskStore.getPrevTasksName(id) }}</span>
+      Antécédent(s): <span> {{ taskStore.getPrevTasksName(id) }}</span> <br/>
+      Marge: <span class="marge">{{ task.lateDate - task.earlyDate }}</span> 
     </p>
     <div class="btn-group">
       <Button
@@ -74,5 +75,6 @@ const emit = defineEmits<{
     z-index: 1000;
     background-color: var(--color-background);
   }
+
 }
 </style>

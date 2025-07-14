@@ -6,19 +6,19 @@
       </div>
       <Button label="Nouvelle Tâche" severity="success" @click="openModal(false)" />
     </div>
-    <div class="content">
+    <div class="content" v-if="taskStore.tasks.size > 1" >
       <template :key="id" v-for="[id, task] in Array.from(taskStore.tasks)">
         <ItemTask
           v-if="id != 'deb' && id != 'fin'"
           :id="id"
           :task="task"
           @updateModalTask="openModal(true, id, task)"
-          @removeModalTask="openRemoveModal(id, task.name as string)"
+          @removeModalTask="openRemoveModal(id)"
           :key="id"
         />
       </template>
     </div>
-    <div v-if="!taskStore.tasks.size" class="task_not_found">Aucune tâche chargée</div>
+    <div v-else class="task_not_found">Aucune tâche chargée</div>
   </div>
   <ModalTask :visible="isActiveModal" :close="closeModal" :dataUpdated="dataUpdated" />
   <RemoveModalTask
@@ -29,7 +29,6 @@
 </template>
 
 <script setup lang="ts">
-import { initialTask } from '@/assets/constant/task';
 import ItemTask from '@/components/ItemTask.vue';
 import ModalTask from '@/components/ModalTask.vue';
 import RemoveModalTask from '@/components/RemoveModalTask.vue';
@@ -42,13 +41,12 @@ const isActiveModal = ref(false);
 const showRemoveModal = ref(false);
 const taskDeleted = reactive({
   id: '',
-  name: '',
 });
 const taskStore = useTaskStore();
 const dataUpdated = reactive({
   isUpdate: false,
   id: '',
-  task: { ...initialTask } as Task,
+  task: {  } as Task,
 });
 
 function openModal(isUpdate: boolean, id?: string, task?: Task) {
@@ -66,10 +64,9 @@ function closeRemoveModal() {
   showRemoveModal.value = false;
 }
 
-function openRemoveModal(id: string, name: string) {
+function openRemoveModal(id: string) {
   showRemoveModal.value = true;
   taskDeleted.id = id;
-  taskDeleted.name = name;
 }
 </script>
 

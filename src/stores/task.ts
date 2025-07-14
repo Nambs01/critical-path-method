@@ -10,7 +10,7 @@ const defaultData = [initialTasks, taskMap1, taskMap2];
 export const useTaskStore = defineStore('task', {
   state: () => ({
     isUpdated: true,
-    tasks: new Map(),
+    tasks: new Map([['deb', { duration: 0, earlyDate: 0, lateDate: 0, nextTasks: [] as string[], prevTasks: [] as string[] }],]),
     orderedTasks: [] as string[],
     totalDuration: 0,
     nodes: [] as Node[],
@@ -19,8 +19,10 @@ export const useTaskStore = defineStore('task', {
   }),
 
   actions: {
-    addTask(id: string, data: Task) {
+    async addTask(id: string, data: Task) {
+      if(data.prevTasks.length < 1) data.prevTasks.push('deb');
       this.tasks.set(id, data);
+      await this.resetData();
     },
 
     updateTask(id: string, data: Task) {
@@ -90,7 +92,12 @@ export const useTaskStore = defineStore('task', {
             task.nextTasks.forEach((key: string) => {
               const nexTask = this.tasks.get(key) as Task;
               if (task.lateDate == 0 || task.lateDate >= nexTask.lateDate - task.duration) {
+                const nextTaskInit = this.tasks.get(task.nextTasks[0]) as Task;
                 task.lateDate = nexTask.lateDate - task.duration;
+                if (task.lateDate >= nextTaskInit.lateDate - task.duration) {
+                  task.lateDate = nextTaskInit.lateDate - task.duration;
+                  return;
+                } 
               }
             });
         }
@@ -100,12 +107,13 @@ export const useTaskStore = defineStore('task', {
 
     async calculate() {
       try {
-        this.resetData();
+        await this.resetData().then(async () => {
+          await this.setOrderedTasks();
+          await this.setEarlyDate();
+          await this.setLateDate();
+          await this.setNodes_edges();
+        });
 
-        await this.setOrderedTasks();
-        await this.setEarlyDate();
-        await this.setLateDate();
-        await this.setNodes_edges();
       } catch (error) {
         throw error;
       }
@@ -218,7 +226,7 @@ export const useTaskStore = defineStore('task', {
               id,
               source: source,
               target: `${id}'`,
-              label: `${edgeTask.name} (${edgeTask.duration})`,
+              label: `${id} (${edgeTask.duration})`,
               isCriticalPath: edgeTask.earlyDate === edgeTask.lateDate,
             });
 
@@ -232,7 +240,7 @@ export const useTaskStore = defineStore('task', {
                     id: '',
                     source: `${id}'`,
                     target: `${next}'`,
-                    label: `${nextTask.name} (${nextTask.duration})`,
+                    label: `${next} (${nextTask.duration})`,
                     isCriticalPath: nodePrime.isCriticalPath && targetNode.isCriticalPath,
                   });
                 }
@@ -270,7 +278,7 @@ export const useTaskStore = defineStore('task', {
               id,
               source,
               target,
-              label: `${edgeTask.name} (${edgeTask.duration})`,
+              label: `${id} (${edgeTask.duration})`,
               isCriticalPath: edgeTask.earlyDate === edgeTask.lateDate,
             });
           }
@@ -394,7 +402,7 @@ export const useTaskStore = defineStore('task', {
       }
     },
 
-    resetData() {
+    async resetData() {
       this.nodes = [];
       this.edges = [];
       this.orderedTasks = [];
@@ -408,23 +416,19 @@ export const useTaskStore = defineStore('task', {
 
     setDefaultData(index: number | null) {
       if (index === null) {
-        this.tasks = new Map();
-        this.resetData();
+        this.tasks = new Map([['deb', { duration: 0, earlyDate: 0, lateDate: 0, nextTasks: [], prevTasks: [] }],]);
       } else this.tasks = defaultData[index];
+      this.resetData();
     },
   },
   getters: {
     getPrevTasksName(state) {
       return (id: string) => {
         const _task = state.tasks.get(id) as Task;
-        const _prevTasksName: string[] = [];
         if (_task.prevTasks.length < 1 || _task.prevTasks.includes('deb')) {
           return 'Début';
         }
-        state.tasks.get(id)?.prevTasks.forEach((key: string) => {
-          _prevTasksName.push(state.tasks.get(key)?.name as string);
-        });
-        return _prevTasksName.join(', ');
+        return state.tasks.get(id)?.prevTasks.join(', ');
       };
     },
   },
