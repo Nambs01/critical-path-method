@@ -120,7 +120,7 @@ function checkError() {
   if (
     (props.dataUpdated.isUpdate &&
       [...tasks.value.keys()].filter((id) => id != props.dataUpdated.id).includes(data.name)) ||
-    [...tasks.value.keys()].includes(data.name)
+      !props.dataUpdated.isUpdate && [...tasks.value.keys()].includes(data.name)
   )
     errorMessage.name = "Changer le nom de la tâche , s'il vous plaît !";
   if (!data.duration || data.duration < 1)
